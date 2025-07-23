@@ -2,15 +2,14 @@
     "schemaVersion": 2,
     "dockerfileLines": [
                         "FROM node:18.20",
-                        "RUN npm install -g pnpm",
                         "RUN mkdir -p /usr/src/app",
                         "WORKDIR /usr/src/app",
                         "COPY ./ /usr/src/app/",
-                        "RUN pnpm install",
+                        "RUN npm install",
                         "COPY ./ /usr/src/app",
                         "ENV NODE_ENV production",
                         "ENV PORT 3000",
                         "EXPOSE 3000" ,
-                        "CMD [\"sh\", \"-c\", \"pnpm build && pnpm start\"]"
+                        "CMD [\"sh\", \"-c\", \"npm run build && npm start\"]"
                       ]
    }
