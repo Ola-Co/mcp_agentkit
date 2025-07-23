@@ -9,10 +9,10 @@ import {
   walletActionProvider,
   WalletProvider,
   wethActionProvider,
-} from "@coinbase/agentkit";
-import fs from "fs";
-import { createWalletClient, Hex, http } from "viem";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+} from '@coinbase/agentkit';
+import fs from 'fs';
+import { createWalletClient, Hex, http } from 'viem';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
 /**
  * AgentKit Integration Route
@@ -44,7 +44,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
  */
 
 // Configure a file to persist a user's private key if none provided
-const WALLET_DATA_FILE = "wallet_data.txt";
+const WALLET_DATA_FILE = 'wallet_data.txt';
 
 /**
  * Prepares the AgentKit and WalletProvider.
@@ -65,14 +65,16 @@ export async function prepareAgentkitAndWalletProvider(): Promise<{
     let privateKey = process.env.PRIVATE_KEY as Hex;
     if (!privateKey) {
       if (fs.existsSync(WALLET_DATA_FILE)) {
-        privateKey = JSON.parse(fs.readFileSync(WALLET_DATA_FILE, "utf8")).privateKey;
-        console.info("Found private key in wallet_data.txt");
+        privateKey = JSON.parse(
+          fs.readFileSync(WALLET_DATA_FILE, 'utf8')
+        ).privateKey;
+        console.info('Found private key in wallet_data.txt');
       } else {
         privateKey = generatePrivateKey();
         fs.writeFileSync(WALLET_DATA_FILE, JSON.stringify({ privateKey }));
-        console.log("Created new private key and saved to wallet_data.txt");
+        console.log('Created new private key and saved to wallet_data.txt');
         console.log(
-          "We recommend you save this private key to your .env file and delete wallet_data.txt afterwards.",
+          'We recommend you save this private key to your .env file and delete wallet_data.txt afterwards.'
         );
       }
     }
@@ -94,14 +96,10 @@ export async function prepareAgentkitAndWalletProvider(): Promise<{
       walletActionProvider(),
       erc20ActionProvider(),
     ];
-    const canUseCdpApi = process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET;
+    const canUseCdpApi =
+      process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET;
     if (canUseCdpApi) {
-      actionProviders.push(
-        cdpApiActionProvider({
-          apiKeyId: process.env.CDP_API_KEY_ID,
-          apiKeySecret: process.env.CDP_API_KEY_SECRET,
-        }),
-      );
+      actionProviders.push(cdpApiActionProvider());
     }
     const agentkit = await AgentKit.from({
       walletProvider,
@@ -110,7 +108,7 @@ export async function prepareAgentkitAndWalletProvider(): Promise<{
 
     return { agentkit, walletProvider };
   } catch (error) {
-    console.error("Error initializing agent:", error);
-    throw new Error("Failed to initialize agent");
+    console.error('Error initializing agent:', error);
+    throw new Error('Failed to initialize agent');
   }
 }
