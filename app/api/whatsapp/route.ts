@@ -5,6 +5,7 @@ const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${process.env.WHATSAP
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 
 export async function GET(req: NextRequest) {
+  console.log('GET API called for WhatsApp verification');
   const { searchParams } = new URL(req.url);
   const mode = searchParams.get('hub.mode');
   const challenge = searchParams.get('hub.challenge');
@@ -16,10 +17,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('POST API called for WhatsApp messages');
   const body = await req.json();
   // Extract message and sender info from WhatsApp webhook payload
-  const message =
-    body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body;
+  console.log('Received body:', body);
+  const message = body?.text?.body;
   const from = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
 
   let reply = "Sorry, I didn't understand that.";
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
       await fetch(WHATSAPP_API_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+          Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
