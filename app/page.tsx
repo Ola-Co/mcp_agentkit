@@ -39,7 +39,9 @@ export default function Home() {
         {/* Chat Messages */}
         <div className="flex-grow overflow-y-auto space-y-3 p-2">
           {messages.length === 0 ? (
-            <p className="text-center text-gray-500">Start chatting with AgentKit...</p>
+            <p className="text-center text-gray-500">
+              Start chatting with AgentKit...
+            </p>
           ) : (
             messages.map((msg, index) => (
               <div
@@ -52,7 +54,7 @@ export default function Home() {
               >
                 <ReactMarkdown
                   components={{
-                    a: props => (
+                    a: (props) => (
                       <a
                         {...props}
                         className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300"
@@ -69,7 +71,11 @@ export default function Home() {
           )}
 
           {/* Thinking Indicator */}
-          {isThinking && <div className="text-right mr-2 text-gray-500 italic">🤖 Thinking...</div>}
+          {isThinking && (
+            <div className="text-right mr-2 text-gray-500 italic">
+              🤖 Thinking...
+            </div>
+          )}
 
           {/* Invisible div to track the bottom */}
           <div ref={messagesEndRef} />
@@ -82,8 +88,8 @@ export default function Home() {
             className="flex-grow p-2 rounded border dark:bg-gray-700 dark:border-gray-600"
             placeholder={"Type a message..."}
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && onSendMessage()}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSendMessage()}
             disabled={isThinking}
           />
           <button
