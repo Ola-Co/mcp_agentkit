@@ -5,6 +5,7 @@ import {
   verifyAuthToken,
   getUserToken,
   AuthenticatedUser,
+  removeUserToken,
 } from '../../../lib/auth-middleware';
 import {
   isWalletCommand,
