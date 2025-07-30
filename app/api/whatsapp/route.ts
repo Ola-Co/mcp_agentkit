@@ -1,4 +1,4 @@
-// app/api/whatsapp/route.ts (Updated version)
+// app/api/whatsapp/route.ts (Updated with Redis auth)
 import { NextRequest, NextResponse } from 'next/server';
 import { createAgent } from '../agent/create-agent';
 import {
@@ -6,6 +6,7 @@ import {
   getUserToken,
   AuthenticatedUser,
   removeUserToken,
+  refreshUserToken,
 } from '../../../lib/auth-middleware';
 import {
   isWalletCommand,
@@ -83,9 +84,14 @@ export async function POST(req: NextRequest) {
       message.toLowerCase().includes('/logout') ||
       message.toLowerCase().includes('logout')
     ) {
-      removeUserToken(from);
-      reply =
-        '👋 You have been logged out successfully. Send "/auth" to authenticate again.';
+      try {
+        await removeUserToken(from);
+        reply =
+          '👋 You have been logged out successfully. Send "/auth" to authenticate again.';
+      } catch (error) {
+        console.error('Error during logout:', error);
+        reply = '❌ Error during logout. Please try again.';
+      }
       await sendWhatsAppMessage(from, reply);
       return new NextResponse('OK', { status: 200 });
     }
@@ -94,10 +100,19 @@ export async function POST(req: NextRequest) {
     const requiresAuth = isWalletCommand(message);
 
     if (requiresAuth) {
-      // Check if user is authenticated
-      const userToken = getUserToken(from); //      ('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlNWYzMmFlNDU2NzQ1MjRkNmQ4NzFlOThlMWI1MzJmMWE1ZDgwYThmMjAxOGUwZWQ2MmM3NzM4NmM0ZDJiNGUzIiwicGhvbmVOdW1iZXIiOiIxNDA4NDQyOTgxMiIsImlhdCI6MTc1MzgyNjI3NSwiZXhwIjoxNzUzOTEyNjc1fQ.eX1NygNfig98yjBrBKs4D7XGcfyw6-5SXLu07omoEdI');
-      if (userToken) {
-        authenticatedUser = verifyAuthToken(userToken);
+      try {
+        // Check if user is authenticated (using Redis)
+        const userToken = await getUserToken(from);
+        if (userToken) {
+          authenticatedUser = verifyAuthToken(userToken);
+
+          // Refresh token expiry on successful verification
+          if (authenticatedUser) {
+            await refreshUserToken(from);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
       }
 
       if (!authenticatedUser) {

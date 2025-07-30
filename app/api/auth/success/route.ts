@@ -14,14 +14,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Store the token for the user
-    storeUserToken(phoneNumber, token);
+    // Store the token in Redis
+    await storeUserToken(phoneNumber, token);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: 'Authentication success stored',
+    });
   } catch (error) {
-    console.error('Error storing auth token:', error);
+    console.error('Error storing auth success:', error);
     return NextResponse.json(
-      { error: 'Failed to store authentication' },
+      { error: 'Failed to store authentication success' },
       { status: 500 }
     );
   }

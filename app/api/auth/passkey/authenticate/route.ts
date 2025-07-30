@@ -6,8 +6,14 @@ import {
 } from '@simplewebauthn/server';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { userCredentials, challengeStore } from '../constant';
 import { isoBase64URL } from '@simplewebauthn/server/helpers';
+import {
+  storeChallenge,
+  getChallenge,
+  removeChallenge,
+  getUserCredentials,
+  updateCredentialCounter,
+} from '../../../../../lib/passkey-storage';
 
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:3579';
@@ -27,7 +33,9 @@ export async function POST(req: NextRequest) {
       .createHash('sha256')
       .update(phoneNumber)
       .digest('hex');
-    const credentials = userCredentials.get(userId);
+
+    // Get credentials from Redis
+    const credentials = await getUserCredentials(userId);
 
     if (!credentials || credentials.length === 0) {
       return NextResponse.json(
@@ -46,7 +54,8 @@ export async function POST(req: NextRequest) {
       userVerification: 'preferred',
     });
 
-    challengeStore.set(userId, options.challenge);
+    // Store challenge in Redis with TTL
+    await storeChallenge(userId, options.challenge);
 
     return NextResponse.json(options);
   } catch (error) {
@@ -73,12 +82,21 @@ export async function PUT(req: NextRequest) {
       .createHash('sha256')
       .update(phoneNumber)
       .digest('hex');
-    const expectedChallenge = challengeStore.get(userId);
-    const credentials = userCredentials.get(userId);
 
-    if (!expectedChallenge || !credentials) {
+    // Get challenge from Redis
+    const expectedChallenge = await getChallenge(userId);
+    if (!expectedChallenge) {
       return NextResponse.json(
-        { error: 'Challenge or credentials not found' },
+        { error: 'Challenge not found or expired' },
+        { status: 400 }
+      );
+    }
+
+    // Get credentials from Redis
+    const credentials = await getUserCredentials(userId);
+    if (!credentials || credentials.length === 0) {
+      return NextResponse.json(
+        { error: 'Credentials not found' },
         { status: 400 }
       );
     }
@@ -109,8 +127,12 @@ export async function PUT(req: NextRequest) {
     });
 
     if (verification.verified) {
-      // Update counter
-      credentialToVerify.counter = verification.authenticationInfo.newCounter;
+      // Update counter in Redis
+      await updateCredentialCounter(
+        userId,
+        credentialToVerify.id,
+        verification.authenticationInfo.newCounter
+      );
 
       // Generate JWT token
       const token = jwt.sign(
@@ -119,7 +141,8 @@ export async function PUT(req: NextRequest) {
         { expiresIn: '24h' }
       );
 
-      challengeStore.delete(userId);
+      // Remove challenge from Redis
+      await removeChallenge(userId);
 
       return NextResponse.json({
         verified: true,
