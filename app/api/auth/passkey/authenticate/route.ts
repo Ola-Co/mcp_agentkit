@@ -14,6 +14,12 @@ import {
   getUserCredentials,
   updateCredentialCounter,
 } from '../../../../../lib/passkey-storage';
+import {
+  getUserWallet,
+  storeUserWallet,
+  updateWalletMetadata,
+} from '@/lib/wallet-storage';
+import { smartWalletService } from '@/lib/smart-wallet-service';
 
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:3579';
@@ -134,9 +140,31 @@ export async function PUT(req: NextRequest) {
         verification.authenticationInfo.newCounter
       );
 
-      // Generate JWT token
+      // Check if user has a wallet, create if not
+      let walletData = await getUserWallet(userId);
+
+      if (!walletData) {
+        // Create new smart wallet for first-time user
+        walletData = await smartWalletService.createSmartWallet(
+          userId,
+          credential.id
+        );
+        await storeUserWallet(userId, walletData);
+      } else {
+        // Update last used timestamp for existing wallet
+        await updateWalletMetadata(userId, {
+          lastUsed: new Date().toISOString(),
+        });
+      }
+
+      // Generate JWT token with wallet info
       const token = jwt.sign(
-        { userId, phoneNumber },
+        {
+          userId,
+          phoneNumber,
+          walletAddress: walletData.address,
+          hasWallet: true,
+        },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '24h' }
       );
@@ -147,7 +175,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({
         verified: true,
         token,
-        message: 'Authentication successful! You can now use wallet commands.',
+        walletAddress: walletData.address,
+        message: 'Authentication successful! Your smart wallet is ready.',
       });
     }
 

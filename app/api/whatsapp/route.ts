@@ -12,6 +12,7 @@ import {
   isWalletCommand,
   generateAuthLink,
 } from '../../../lib/wallet-commands';
+import { handleWalletCommand } from '@/lib/whatsapp-handler';
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -123,73 +124,74 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    try {
-      // Get the agent instance
-      const agent = await createAgent();
+    // try {
+    //   // Get the agent instance
+    //   const agent = await createAgent();
 
-      // Create a unique thread ID for this conversation
-      const yesterday = Date.now() - 24 * 60 * 60 * 1000;
-      let threadId = `whatsapp_user_${from}_${Math.floor(
-        yesterday / (24 * 60 * 60 * 1000)
-      )}`;
+    //   // Create a unique thread ID for this conversation
+    //   const yesterday = Date.now() - 24 * 60 * 60 * 1000;
+    //   let threadId = `whatsapp_user_${from}_${Math.floor(
+    //     yesterday / (24 * 60 * 60 * 1000)
+    //   )}`;
 
-      // Check if user wants to reset conversation
-      if (
-        message.toLowerCase().includes('/reset') ||
-        message.toLowerCase().includes('start over')
-      ) {
-        const timestamp = Date.now();
-        threadId = `whatsapp_user_${from}_${timestamp}`;
-      }
+    //   // Check if user wants to reset conversation
+    //   if (
+    //     message.toLowerCase().includes('/reset') ||
+    //     message.toLowerCase().includes('start over')
+    //   ) {
+    //     const timestamp = Date.now();
+    //     threadId = `whatsapp_user_${from}_${timestamp}`;
+    //   }
 
-      console.log('Invoking agent with thread ID:', threadId);
+    //   console.log('Invoking agent with thread ID:', threadId);
 
-      // Prepare the message with authentication context
-      let contextualMessage = message;
-      if (authenticatedUser) {
-        contextualMessage = `[Authenticated user: ${authenticatedUser.phoneNumber}] ${message}`;
-      }
+    //   // Prepare the message with authentication context
+    //   let contextualMessage = message;
+    //   if (authenticatedUser) {
+    //     contextualMessage = `[Authenticated user: ${authenticatedUser.phoneNumber}] ${message}`;
+    //   }
 
-      // Use the agent to process the message with proper configuration
-      const agentResponse = await agent.invoke(
-        {
-          input: contextualMessage,
-        },
-        {
-          configurable: {
-            thread_id: threadId,
-          },
-        }
-      );
+    //   // Use the agent to process the message with proper configuration
+    //   const agentResponse = await agent.invoke(
+    //     {
+    //       input: contextualMessage,
+    //     },
+    //     {
+    //       configurable: {
+    //         thread_id: threadId,
+    //       },
+    //     }
+    //   );
 
-      console.log('Raw agent response:', agentResponse);
+    //   console.log('Raw agent response:', agentResponse);
 
-      // Extract the response content
-      if (agentResponse?.messages && Array.isArray(agentResponse.messages)) {
-        // Get the last AIMessage
-        const lastMessage =
-          agentResponse.messages[agentResponse.messages.length - 1];
-        if (lastMessage?.content) {
-          reply = lastMessage.content;
-        }
-      } else if (agentResponse?.content) {
-        reply = agentResponse.content;
-      } else if (typeof agentResponse === 'string') {
-        reply = agentResponse;
-      }
+    //   // Extract the response content
+    //   if (agentResponse?.messages && Array.isArray(agentResponse.messages)) {
+    //     // Get the last AIMessage
+    //     const lastMessage =
+    //       agentResponse.messages[agentResponse.messages.length - 1];
+    //     if (lastMessage?.content) {
+    //       reply = lastMessage.content;
+    //     }
+    //   } else if (agentResponse?.content) {
+    //     reply = agentResponse.content;
+    //   } else if (typeof agentResponse === 'string') {
+    //     reply = agentResponse;
+    //   }
 
-      // Add authentication status to non-wallet commands if helpful
-      if (!requiresAuth && !authenticatedUser) {
-        reply +=
-          '\n\n💡 *Tip: Send "/auth" to connect your wallet for crypto operations.*';
-      }
+    //   // Add authentication status to non-wallet commands if helpful
+    //   if (!requiresAuth && !authenticatedUser) {
+    //     reply +=
+    //       '\n\n💡 *Tip: Send "/auth" to connect your wallet for crypto operations.*';
+    //   }
 
-      console.log('Processed reply:', reply);
-    } catch (agentError) {
-      console.error('Error processing message with agent:', agentError);
-      reply =
-        "I'm experiencing some technical difficulties. Please try again later.";
-    }
+    //   console.log('Processed reply:', reply);
+    // } catch (agentError) {
+    //   console.error('Error processing message with agent:', agentError);
+    //   reply =
+    //     "I'm experiencing some technical difficulties. Please try again later.";
+    // }
+    reply = await handleWalletCommand(from, message, BASE_URL);
 
     await sendWhatsAppMessage(from, reply);
     return new NextResponse('OK', { status: 200 });

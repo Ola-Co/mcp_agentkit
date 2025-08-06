@@ -127,7 +127,13 @@ export default function AuthPage() {
         });
 
         setMessage(
-          'Authentication successful! 🎉\n\nYou can now return to WhatsApp and use wallet commands like:\n• "get my balance"\n• "send 0.1 ETH to 0x..."\n• "get wallet address"'
+          'Authentication successful! 🎉\n\n' +
+            'Your Smart Wallet is ready!\n\n' +
+            'You can now return to WhatsApp and use commands like:\n' +
+            '• "get my balance"\n' +
+            '• "get wallet address"\n' +
+            '• "send 0.1 ETH to 0x..."\n' +
+            '• "swap 100 USDC for ETH"'
         );
         setAuthSuccess(true);
 
