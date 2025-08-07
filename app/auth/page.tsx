@@ -117,7 +117,7 @@ export default function AuthPage() {
 
       if (verification.verified) {
         // Store the authentication success on the server
-        await fetch('/api/auth/success', {
+        const authSuccessResp = await fetch('/api/auth/success', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -125,10 +125,8 @@ export default function AuthPage() {
             token: verification.token,
           }),
         });
-
-        setMessage(
-          'Authentication successful! 🎉\n\nYou can now return to WhatsApp and use wallet commands like:\n• "get my balance"\n• "send 0.1 ETH to 0x..."\n• "get wallet address"'
-        );
+        const authSuccessData = await authSuccessResp.json();
+        setMessage(`Authentication successful!  \n ${authSuccessData.message}`);
         setAuthSuccess(true);
 
         // Store token locally for demo purposes
@@ -305,6 +303,7 @@ export default function AuthPage() {
                 <li>send 0.1 ETH to 0x...</li>
                 <li>swap 100 USDC for ETH</li>
                 <li>/logout to sign out</li>
+                <li>{message}</li>
               </ul>
             </div>
           </div>
