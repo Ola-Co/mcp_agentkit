@@ -208,8 +208,13 @@ export async function POST(req: NextRequest) {
       const smartAccountClient = await createOrLoadSmartAccount(wallet);
 
       const address = await smartAccountClient.getAccountAddress();
+
+      const balanceBigInt = await provider.getBalance(address);
+
+      const balance = ethers.formatEther(balanceBigInt);
       console.log('Smart Account Address:', address);
-      reply = 'Smart account address: ' + address;
+      reply =
+        'Smart account address: ' + address + '\nBalance: ' + balance + ' ETH';
       await sendWhatsAppMessage(from, reply);
     }
 

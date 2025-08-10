@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
     const smartAccountClient = await createOrLoadSmartAccount(wallet);
 
     const address = await smartAccountClient.getAccountAddress();
+    const balanceBigInt = await provider.getBalance(address);
+    const balance = ethers.formatEther(balanceBigInt);
+
     console.log('Smart Account Address:', address);
     // Store the token in Redis
     await storeUserToken(phoneNumber, token);
@@ -32,7 +35,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message:
-        'Authentication success stored. Smart account address: ' + address,
+        'Authentication success stored. Smart account address: ' +
+        address +
+        '\nBalance: ' +
+        balance +
+        ' ETH',
     });
   } catch (error) {
     console.error('Error storing auth success:', error);
