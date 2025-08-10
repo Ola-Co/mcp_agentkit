@@ -1,5 +1,5 @@
 // app/api/auth/passkey/constant.ts
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/typescript-types';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
 
 export const RP_ID = process.env.RP_ID || 'localhost';
 export const RP_NAME = process.env.RP_NAME || 'WhatsApp Crypto Bot';

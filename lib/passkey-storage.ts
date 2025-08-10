@@ -1,6 +1,6 @@
 // lib/passkey-storage.ts
 import redis from './redis';
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/typescript-types';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
 
 export interface StoredCredential {
   id: Uint8Array;
