@@ -1,5 +1,4 @@
-// Enhanced authentication page with success callback
-// app/auth/page.tsx (Enhanced version)
+// app/auth/page.tsx (Enhanced to pass passkey credentials)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +9,6 @@ import {
 
 export default function AuthPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
-  //   const [isRegistered, setIsRegistered] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [mode, setMode] = useState<'register' | 'login'>('login');
@@ -59,15 +57,14 @@ export default function AuthPage() {
       const verification = await verificationResponse.json();
 
       if (verification.verified) {
-        setMessage('Registration successful! You can now authenticate.');
-        // setIsRegistered(true);
+        setMessage('✅ Registration successful! You can now authenticate.');
         setMode('login');
       } else {
-        setMessage('Registration failed. Please try again.');
+        setMessage('❌ Registration failed. Please try again.');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setMessage('Registration failed. Please try again.');
+      setMessage('❌ Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -91,7 +88,7 @@ export default function AuthPage() {
       if (!optionsResponse.ok) {
         const error = await optionsResponse.json();
         if (optionsResponse.status === 404) {
-          setMessage('No account found. Please register first.');
+          setMessage('❌ No account found. Please register first.');
           setMode('register');
           return;
         }
@@ -116,28 +113,41 @@ export default function AuthPage() {
       const verification = await verificationResponse.json();
 
       if (verification.verified) {
-        // Store the authentication success on the server
+        console.log('Authentication response:', verification);
+
+        // Store the authentication success on the server with passkey data
         const authSuccessResp = await fetch('/api/auth/success', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             phoneNumber,
             token: verification.token,
+            credentialId: verification.credentialId,
+            publicKey: verification.publicKey,
+            userId: verification.userId,
           }),
         });
-        const authSuccessData = await authSuccessResp.json();
-        setMessage(`Authentication successful!  \n ${authSuccessData.message}`);
-        setAuthSuccess(true);
 
-        // Store token locally for demo purposes
-        localStorage.setItem('auth_token', verification.token);
-        localStorage.setItem('phone_number', phoneNumber);
+        const authSuccessData = await authSuccessResp.json();
+
+        if (authSuccessData.success) {
+          setMessage(
+            `🎉 Authentication successful!\n\n${authSuccessData.message}`
+          );
+          setAuthSuccess(true);
+
+          // Store token locally for demo purposes (optional)
+          localStorage.setItem('auth_token', verification.token);
+          localStorage.setItem('phone_number', phoneNumber);
+        } else {
+          setMessage('❌ Failed to complete authentication setup.');
+        }
       } else {
-        setMessage('Authentication failed. Please try again.');
+        setMessage('❌ Authentication failed. Please try again.');
       }
     } catch (error) {
       console.error('Authentication error:', error);
-      setMessage('Authentication failed. Please try again.');
+      setMessage('❌ Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -163,23 +173,25 @@ export default function AuthPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            WhatsApp Crypto Bot
+            🤖 WhatsApp Crypto Bot
           </h1>
-          <p className="text-gray-600">Secure authentication with passkeys</p>
+          <p className="text-gray-600">
+            Secure wallet authentication with passkeys
+          </p>
         </div>
 
         {!authSuccess ? (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
+                📱 Phone Number
               </label>
               <input
                 type="tel"
                 value={phoneNumber}
                 onChange={e => setPhoneNumber(e.target.value)}
                 placeholder="+1234567890"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 disabled={loading}
               />
             </div>
@@ -189,28 +201,28 @@ export default function AuthPage() {
                 onClick={() => setMode('login')}
                 className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
                   mode === 'login'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Login
+                🔓 Login
               </button>
               <button
                 onClick={() => setMode('register')}
                 className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
                   mode === 'register'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-blue-600 text-white shadow-md'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Register
+                📝 Register
               </button>
             </div>
 
             <button
               onClick={mode === 'register' ? handleRegister : handleLogin}
               disabled={loading || !phoneNumber}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-md font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center shadow-md"
             >
               {loading ? (
                 <>
@@ -234,23 +246,11 @@ export default function AuthPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Processing...
+                  ⏳ Processing...
                 </>
               ) : (
                 <>
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
+                  🔐{' '}
                   {mode === 'register'
                     ? 'Register with Passkey'
                     : 'Login with Passkey'}
@@ -260,15 +260,31 @@ export default function AuthPage() {
 
             {message && (
               <div
-                className={`p-4 rounded-md ${
-                  message.includes('successful')
-                    ? 'bg-green-50 text-green-800 border border-green-200'
-                    : 'bg-red-50 text-red-800 border border-red-200'
+                className={`p-4 rounded-md border ${
+                  message.includes('successful') || message.includes('🎉')
+                    ? 'bg-green-50 text-green-800 border-green-200'
+                    : 'bg-red-50 text-red-800 border-red-200'
                 }`}
               >
-                <div className="whitespace-pre-line text-sm">{message}</div>
+                <div className="whitespace-pre-line text-sm font-medium">
+                  {message}
+                </div>
               </div>
             )}
+
+            <div className="bg-blue-50 p-3 rounded-md">
+              <h3 className="font-medium text-blue-900 mb-2">
+                🛡️ Security Features:
+              </h3>
+              <ul className="text-xs text-blue-800 space-y-1">
+                <li>
+                  • Biometric authentication (Face ID, Touch ID, Windows Hello)
+                </li>
+                <li>• Unique PIN generated from your passkey</li>
+                <li>• Smart contract wallet creation</li>
+                <li>• No passwords needed</li>
+              </ul>
+            </div>
           </div>
         ) : (
           <div className="text-center space-y-4">
@@ -288,31 +304,38 @@ export default function AuthPage() {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-green-800">
-              Authentication Successful!
+              🎉 Authentication Successful!
             </h2>
             <p className="text-gray-600">
-              You can now return to WhatsApp and use wallet commands.
+              Your secure crypto wallet is ready! Return to WhatsApp to use
+              wallet commands.
             </p>
             <div className="bg-blue-50 p-4 rounded-md text-left">
               <h3 className="font-medium text-blue-900 mb-2">
-                Available Commands:
+                💬 Available WhatsApp Commands:
               </h3>
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>get my balance</li>
                 <li>get wallet address</li>
+                <li>wallet info</li>
                 <li>send 0.1 ETH to 0x...</li>
-                <li>swap 100 USDC for ETH</li>
                 <li>/logout to sign out</li>
-                <li>{message}</li>
               </ul>
             </div>
+            {message && (
+              <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                <div className="text-xs text-green-700 whitespace-pre-line">
+                  {message}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="mt-6 text-center text-xs text-gray-500">
           <p>
-            🔒 Your authentication is secured with biometric verification or
-            passkeys. No passwords needed!
+            🔒 Your wallet is secured with biometric passkey authentication.
+            Each passkey generates a unique PIN for maximum security.
           </p>
         </div>
       </div>

@@ -1,68 +1,23 @@
 // app/api/auth/passkey/authenticate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-} from '@simplewebauthn/server';
-import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
-import { isoBase64URL } from '@simplewebauthn/server/helpers';
-import {
-  storeChallenge,
-  getChallenge,
-  removeChallenge,
-  getUserCredentials,
-  updateCredentialCounter,
-} from '../../../../../lib/passkey-storage';
-
-const RP_ID = process.env.RP_ID || 'localhost';
-const ORIGIN = process.env.ORIGIN || 'http://localhost:3579';
+  getAuthenticationOptions,
+  verifyAuthentication,
+  jsonError,
+} from '../../../../../lib/auth-service';
 
 export async function POST(req: NextRequest) {
   try {
     const { phoneNumber } = await req.json();
+    if (!phoneNumber) return jsonError('Phone number required');
 
-    if (!phoneNumber) {
-      return NextResponse.json(
-        { error: 'Phone number required' },
-        { status: 400 }
-      );
-    }
-
-    const userId = crypto
-      .createHash('sha256')
-      .update(phoneNumber)
-      .digest('hex');
-
-    // Get credentials from Redis
-    const credentials = await getUserCredentials(userId);
-
-    if (!credentials || credentials.length === 0) {
-      return NextResponse.json(
-        { error: 'No credentials found. Please register first.' },
-        { status: 404 }
-      );
-    }
-
-    const options = await generateAuthenticationOptions({
-      rpID: RP_ID,
-      allowCredentials: credentials.map(cred => ({
-        id: isoBase64URL.fromBuffer(cred.id),
-        type: 'public-key',
-        transports: cred.transports,
-      })),
-      userVerification: 'preferred',
-    });
-
-    // Store challenge in Redis with TTL
-    await storeChallenge(userId, options.challenge);
-
+    const options = await getAuthenticationOptions(phoneNumber);
     return NextResponse.json(options);
-  } catch (error) {
-    console.error('Authentication options error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate authentication options' },
-      { status: 500 }
+  } catch (err: unknown) {
+    console.error('Auth options error:', err);
+    return jsonError(
+      (err as Error).message || 'Failed to generate authentication options',
+      400
     );
   }
 }
@@ -70,96 +25,21 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const { phoneNumber, credential } = await req.json();
+    if (!phoneNumber || !credential)
+      return jsonError('Phone number and credential required');
 
-    if (!phoneNumber || !credential) {
-      return NextResponse.json(
-        { error: 'Phone number and credential required' },
-        { status: 400 }
-      );
-    }
+    const result = await verifyAuthentication(phoneNumber, credential);
+    if (!result.verified) return jsonError('Authentication failed');
 
-    const userId = crypto
-      .createHash('sha256')
-      .update(phoneNumber)
-      .digest('hex');
-
-    // Get challenge from Redis
-    const expectedChallenge = await getChallenge(userId);
-    if (!expectedChallenge) {
-      return NextResponse.json(
-        { error: 'Challenge not found or expired' },
-        { status: 400 }
-      );
-    }
-
-    // Get credentials from Redis
-    const credentials = await getUserCredentials(userId);
-    if (!credentials || credentials.length === 0) {
-      return NextResponse.json(
-        { error: 'Credentials not found' },
-        { status: 400 }
-      );
-    }
-
-    const credentialToVerify = credentials.find(
-      cred => isoBase64URL.fromBuffer(cred.id) === credential.id
-    );
-
-    if (!credentialToVerify) {
-      return NextResponse.json(
-        { error: 'Credential not found' },
-        { status: 400 }
-      );
-    }
-
-    const verification = await verifyAuthenticationResponse({
-      response: credential,
-      expectedChallenge,
-      expectedOrigin: ORIGIN,
-      expectedRPID: RP_ID,
-      credential: {
-        id: isoBase64URL.fromBuffer(credentialToVerify.id),
-        publicKey: credentialToVerify.publicKey,
-        counter: credentialToVerify.counter,
-        transports: credentialToVerify.transports,
-      },
-      requireUserVerification: false,
+    return NextResponse.json({
+      ...result,
+      passkeyPin: result.passkeyPin
+        ? result.passkeyPin.substring(0, 4) + '****'
+        : undefined,
+      message: 'Authentication successful! You can now use wallet commands.',
     });
-
-    if (verification.verified) {
-      // Update counter in Redis
-      await updateCredentialCounter(
-        userId,
-        credentialToVerify.id,
-        verification.authenticationInfo.newCounter
-      );
-
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId, phoneNumber },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '24h' }
-      );
-
-      // Remove challenge from Redis
-      await removeChallenge(userId);
-
-      return NextResponse.json({
-        verified: true,
-        token,
-        message: 'Authentication successful! You can now use wallet commands.',
-      });
-    }
-
-    return NextResponse.json(
-      { verified: false, error: 'Authentication failed' },
-      { status: 400 }
-    );
-  } catch (error) {
-    console.error('Authentication verification error:', error);
-    return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    console.error('Auth verification error:', err);
+    return jsonError((err as Error).message || 'Authentication failed', 400);
   }
 }
