@@ -4,6 +4,7 @@ import {
   verifyAuthToken,
   getUserToken,
   refreshUserToken,
+  removeUserToken,
 } from '@/lib/auth-middleware';
 import {
   WALLET_COMMANDS,
@@ -56,7 +57,7 @@ export async function processIncomingWhatsAppMessage(
     return `🔐 Please authenticate to use wallet features:\n\n${authLink}`;
   }
   if (/\/logout|logout/i.test(message)) {
-    // remove token logic
+    await removeUserToken(from);
     return '👋 Logged out successfully.';
   }
 

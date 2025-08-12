@@ -8,27 +8,37 @@ import {
 
 export async function GET(req: NextRequest) {
   console.log('GET API called for WhatsApp verification');
-  const { searchParams } = new URL(req.url);
-  const mode = searchParams.get('hub.mode');
-  const challenge = searchParams.get('hub.challenge');
-  const token = searchParams.get('hub.verify_token');
-  if (mode === 'subscribe' && token === process.env.VERIFY_TOKEN) {
-    return new NextResponse(challenge, { status: 200 });
+  try {
+    const { searchParams } = new URL(req.url);
+    const mode = searchParams.get('hub.mode');
+    const challenge = searchParams.get('hub.challenge');
+    const token = searchParams.get('hub.verify_token');
+    if (mode === 'subscribe' && token === process.env.VERIFY_TOKEN) {
+      return new NextResponse(challenge, { status: 200 });
+    }
+    return new NextResponse(null, { status: 403 });
+  } catch (error) {
+    console.error('Error in POST handler:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
-  return new NextResponse(null, { status: 403 });
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const msgObj = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  try {
+    const body = await req.json();
+    const msgObj = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-  if (!msgObj) return new NextResponse('OK', { status: 200 });
+    if (!msgObj) return new NextResponse('OK', { status: 200 });
 
-  const from = msgObj.from;
-  const message = msgObj?.text?.body || '';
+    const from = msgObj.from;
+    const message = msgObj?.text?.body || '';
 
-  const reply = await processIncomingWhatsAppMessage(from, message);
-  await sendWhatsAppMessage(from, reply);
+    const reply = await processIncomingWhatsAppMessage(from, message);
+    await sendWhatsAppMessage(from, reply);
 
-  return new NextResponse('OK', { status: 200 });
+    return new NextResponse('OK', { status: 200 });
+  } catch (error) {
+    console.error('Error in POST handler:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
 }
