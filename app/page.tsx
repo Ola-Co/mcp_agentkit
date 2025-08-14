@@ -36,7 +36,10 @@ export default function Home() {
                 {
                   value: {
                     messages: [
-                      { from: '14084429812', text: { body: 'wallet info' } },
+                      {
+                        from: 'sendersphone',
+                        text: { body: 'send 0.000001 eth to 0x4A3F12706' },
+                      },
                     ],
                   },
                 },
