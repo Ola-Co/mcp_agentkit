@@ -24,7 +24,7 @@ export interface TransferResult {
  * - "send eth 0.2 to 0xabcd..."
  */
 export function parseTransferCommand(message: string): TransferParams | null {
-  const text = message.toLowerCase().trim();
+  // const text = message.toLowerCase().trim();
 
   // Regex patterns to match different command formats
   const patterns = [
